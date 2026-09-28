@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Bot Security Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <!-- Login Seite -->
+    <div id="loginPage" class="page active">
+        <div class="login-container">
+            <div class="login-box">
+                <h1>Discord Bot Security Dashboard</h1>
+                <p class="subtitle">Admin Panel für Sicherheitsfunktionen</p>
+                
+                <button id="discordLoginBtn" class="discord-btn">
+                    <img src="https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://localhost:3000/callback&scope=identify%20email" alt="">
+                    Mit Discord anmelden
+                </button>
+                
+                <div class="login-divider">ODER</div>
+                
+                <input type="email" id="emailInput" placeholder="E-Mail" class="input-field">
+                <input type="password" id="passwordInput" placeholder="Passwort" class="input-field">
+                <button id="emailLoginBtn" class="login-btn">Anmelden</button>
+                
+                <p class="toggle-text">
+                    Noch kein Konto? <span id="toggleRegister" class="link">Registrieren</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registrierungs Seite -->
+    <div id="registerPage" class="page">
+        <div class="login-container">
+            <div class="login-box">
+                <h1>Registrieren</h1>
+                <p class="subtitle">Neues Konto erstellen</p>
+                
+                <input type="text" id="usernameInput" placeholder="Benutzername" class="input-field">
+                <input type="email" id="regEmailInput" placeholder="E-Mail" class="input-field">
+                <input type="password" id="regPasswordInput" placeholder="Passwort" class="input-field">
+                <input type="password" id="regConfirmPasswordInput" placeholder="Passwort wiederholen" class="input-field">
+                <button id="registerBtn" class="login-btn">Registrieren</button>
+                
+                <p class="toggle-text">
+                    Bereits registriert? <span id="toggleLogin" class="link">Anmelden</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboardPage" class="page">
+        <div class="dashboard-container">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Dashboard</h2>
+                    <button id="logoutBtn" class="logout-btn">Abmelden</button>
+                </div>
+                
+                <nav class="sidebar-nav">
+                    <button class="nav-btn active" data-page="overview">📊 Übersicht</button>
+                    <button class="nav-btn" data-page="anti-spam">🚫 Anti-Spam</button>
+                    <button class="nav-btn" data-page="anti-nuke">💣 Anti-Nuke</button>
+                    <button class="nav-btn" data-page="logs">📋 Protokolle</button>
+                    <button class="nav-btn" data-page="settings">⚙️ Einstellungen</button>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Overview Page -->
+                <section id="overview" class="content-section active">
+                    <h2>Dashboard Übersicht</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Spam Nachrichten geblockt</h3>
+                            <p class="stat-number" id="spamCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Nuke Versuche gestoppt</h3>
+                            <p class="stat-number" id="nukeCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Aktive Nutzer</h3>
+                            <p class="stat-number" id="usersCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>System Status</h3>
+                            <p class="stat-status" id="systemStatus">🟢 Online</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Anti-Spam Page -->
+                <section id="anti-spam" class="content-section">
+                    <h2>Anti-Spam Dashboard</h2>
+                    
+                    <div class="settings-box">
+                        <h3>Anti-Spam Einstellungen</h3>
+                        <div class="setting-item">
+                            <label>Nachrichtenrate (pro Sekunde)</label>
+                            <input type="number" id="spamRate" value="5" min="1" max="20">
+                            <p class="help-text">Maximale Nachrichten pro Sekunde pro Nutzer</p>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label>Strafe für Spam</label>
+                            <select id="spamPunishment">
+                                <option value="warn">Verwarnung</option>
+                                <option value="mute">Stummschalten (5 Min)</option>
+                                <option value="kick">Rauswerfen</option>
+                                <option value="ban">Bannen</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="spamEnabled" checked>
+                                Anti-Spam aktiviert
+                            </label>
+                        </div>
+
+                        <button id="saveSpamSettings" class="save-btn">Speichern</button>
+                    </div>
+
+                    <div class="logs-box">
+                        <h3>Aktuelle Spam-Vorfälle</h3>
+                        <table class="logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Benutzer</th>
+                                    <th>Nachrichten</th>
+                                    <th>Zeit</th>
+                                    <th>Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="spamLogs">
+                                <tr>
+                                    <td colspan="4" class="no-data">Noch keine Vorfälle</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Anti-Nuke Page -->
+                <section id="anti-nuke" class="content-section">
+                    <h2>Anti-Nuke Schutz</h2>
+                    
+                    <div class="settings-box">
+                        <h3>Anti-Nuke Einstellungen</h3>
+                        
+                        <div class="setting-item">
+                            <label>Maximale Kanal-Löschungen pro Minute</label>
+                            <input type="number" id="maxChannelDeletes" value="5" min="1" max="50">
+                            <p class="help-text">Maximale Anzahl von Kanälen, die pro Minute gelöscht werden können</p>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>Maximale Nachrichten-Löschungen pro Minute</label>
+                            <input type="number" id="maxMessageDeletes" value="10" min="1" max="100">
+                            <p class="help-text">Maximale Anzahl von Nachrichten, die pro Minute gelöscht werden können</p>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>Maximale Rollenerstellung pro Minute</label>
+                            <input type="number" id="maxRoleCreates" value="3" min="1" max="20">
+                            <p class="help-text">Maximale Anzahl von neuen Rollen pro Minute</p>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>Nuke-Aktion</label>
+                            <select id="nukePunishment">
+                                <option value="warn">Verwarnung</option>
+                                <option value="mute">Stummschalten (1 Std)</option>
+                                <option value="kick">Rauswerfen</option>
+                                <option value="ban">Bannen</option>
+                            </select>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="nukeEnabled" checked>
+                                Anti-Nuke aktiviert
+                            </label>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>Automatische Server-Wiederherstellung</label>
+                            <select id="autoRestore">
+                                <option value="disabled">Deaktiviert</option>
+                                <option value="channels">Kanäle</option>
+                                <option value="all">Alles</option>
+                            </select>
+                        </div>
+
+                        <button id="saveNukeSettings" class="save-btn">Speichern</button>
+                    </div>
+
+                    <div class="logs-box">
+                        <h3>Nuke-Versuche</h3>
+                        <table class="logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Benutzer</th>
+                                    <th>Art</th>
+                                    <th>Anzahl</th>
+                                    <th>Zeit</th>
+                                    <th>Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nukeLogs">
+                                <tr>
+                                    <td colspan="5" class="no-data">Noch keine Vorfälle</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Logs Page -->
+                <section id="logs" class="content-section">
+                    <h2>Sicherheitsprotokolle</h2>
+                    
+                    <div class="filter-section">
+                        <input type="text" id="logFilter" placeholder="Suche nach Benutzer oder Aktion...">
+                        <select id="logTypeFilter">
+                            <option value="all">Alle Ereignisse</option>
+                            <option value="spam">Spam</option>
+                            <option value="nuke">Nuke</option>
+                            <option value="warn">Verwarnungen</option>
+                            <option value="kick">Rauswürfe</option>
+                            <option value="ban">Bannen</option>
+                        </select>
+                    </div>
+
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th>Zeit</th>
+                                <th>Benutzer</th>
+                                <th>Ereignis</th>
+                                <th>Beschreibung</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allLogs">
+                            <tr>
+                                <td colspan="5" class="no-data">Noch keine Protokolle</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Settings Page -->
+                <section id="settings" class="content-section">
+                    <h2>Admin-Einstellungen</h2>
+                    
+                    <div class="settings-box">
+                        <h3>Allgemeine Einstellungen</h3>
+                        
+                        <div class="setting-item">
+                            <label>Server ID</label>
+                            <input type="text" id="serverId" placeholder="Discord Server ID" class="input-field">
+                        </div>
+
+                        <div class="setting-item">
+                            <label>Bot Token</label>
+                            <input type="password" id="botToken" placeholder="Discord Bot Token" class="input-field">
+                        </div>
+
+                        <div class="setting-item">
+                            <label>Admin Rollen (komma-getrennt)</label>
+                            <textarea id="adminRoles" placeholder="Rollen IDs..." class="textarea-field"></textarea>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>Whitelisted Kanäle (komma-getrennt)</label>
+                            <textarea id="whitelistedChannels" placeholder="Kanal IDs..." class="textarea-field"></textarea>
+                        </div>
+
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="loggingEnabled" checked>
+                                Logging aktiviert
+                            </label>
+                        </div>
+
+                        <button id="saveGeneralSettings" class="save-btn">Speichern</button>
+                    </div>
+
+                    <div class="settings-box">
+                        <h3>Benutzer-Management</h3>
+                        
+                        <button id="clearAllLogsBtn" class="danger-btn">Alle Protokolle löschen</button>
+                        <button id="resetSettingsBtn" class="danger-btn">Einstellungen zurücksetzen</button>
+                    </div>
+
+                    <div class="settings-box">
+                        <h3>Backup & Restore</h3>
+                        
+                        <button id="exportDataBtn" class="secondary-btn">Daten exportieren</button>
+                        <button id="importDataBtn" class="secondary-btn">Daten importieren</button>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
